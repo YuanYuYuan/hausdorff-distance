@@ -47,15 +47,14 @@ where
         let mut candidate = zero_pair;
         for y in y_vec {
             let d = dist(x, y);
-            if d < max {
-                break;
-            } else if d < min {
+            if d < min {
                 min = d;
                 candidate = (x, y);
             }
+            if min < max {
+                break;
+            }
         }
-        println!("For x: {:?}, min: {:?}, max so far: {:?}", x, min, max);
-
         if min != u64::MAX && min > max {
             max = min;
             pair = candidate;
@@ -97,7 +96,7 @@ where
     let zeros = D::zeros(D::NDIM.unwrap());
     let zeros_pair = (&zeros, &zeros);
     let heap_size = {
-        let len = ((x_vec.len() * y_vec.len()) as f64 * (1. - percentile)).ceil() as usize;
+        let len = (x_vec.len() as f64 * (1. - percentile)).ceil() as usize;
         if len > 0 {
             len
         } else {
@@ -114,11 +113,12 @@ where
         let mut min = u64::MAX;
         for y in y_vec {
             let d = dist(x, y);
-            if d < min_of_heap {
-                break;
-            } else if d < min {
+            if d < min {
                 min = d;
                 candidate = (x, y);
+            }
+            if min < min_of_heap {
+                break;
             }
         }
 
@@ -134,7 +134,7 @@ where
             if heap.len() < heap_size {
                 heap.push(candidate_pair);
                 heap_changed = true
-            } else if min > min_of_heap {
+            } else if min >= min_of_heap {
                 heap.push(candidate_pair);
                 heap.pop();
                 heap_changed = true
@@ -148,6 +148,20 @@ where
 
     let h = heap.peek().unwrap();
     ((h.x, h.y), (h.v as f64).sqrt())
+}
+
+fn hd95<D, F>(
+    x_vec: &Vec<D>,
+    y_vec: &Vec<D>,
+    dist: &F,
+) -> f64
+where
+    D: Dimension + Copy,
+    F: Fn(&D, &D) -> u64,
+{
+    let (_, h1) = find_max_percentile(x_vec, y_vec, dist, 0.95);
+    let (_, h2) = find_max_percentile(y_vec, x_vec, dist, 0.95);
+    (h1 + h2) / 2.
 }
 
 fn main() {
@@ -173,5 +187,6 @@ fn main() {
     let y_vec = flatten(&b.mapv(is_target));
 
     println!("{:?}", find_max(&x_vec, &y_vec, distance));
-    // println!("{:?}", find_max_percentile(&x_vec, &y_vec, distance, 0.95));
+    println!("{:?}", find_max_percentile(&x_vec, &y_vec, distance, 0.95));
+    println!("{:?}", hd95(&x_vec, &y_vec, &distance));
 }
